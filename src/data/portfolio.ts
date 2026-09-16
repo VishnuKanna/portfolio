@@ -8,11 +8,11 @@ export const profile = {
 };
 
 export const contact = {
-  linkedin: 'https://www.linkedin.com/',
-  github: 'https://github.com/',
-  email: 'mailto:hello@vishnukanna.dev',
+  linkedin: 'https://www.linkedin.com/in/vishnukannaj',
+  github: 'https://github.com/VishnuKanna',
+  email: 'mailto:vishnukannaj97@gmail.com',
   tel: '+91 00000 00000',
-  displayEmail: 'hello@vishnukanna.dev',
+  displayEmail: 'vishnukannaj97@gmail.com',
 };
 
 export const nav = [

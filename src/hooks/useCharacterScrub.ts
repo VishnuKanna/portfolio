@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { gsap } from '../lib/gsap';
+import { gsap, ScrollTrigger } from '../lib/gsap';
 import { heroVideo } from '../data/heroVideo';
 
-type Mode = 'scrub' | 'play' | 'still';
+type Mode = 'scrub' | 'scroll' | 'still';
 
 function detectMode(): Mode {
   if (typeof window === 'undefined') return 'still';
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'still';
   const fine = window.matchMedia('(pointer: fine)').matches;
-  return fine ? 'scrub' : 'play';
+  return fine ? 'scrub' : 'scroll';
 }
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
@@ -53,9 +53,7 @@ export function useCharacterScrub() {
       if (revealed) return;
       revealed = true;
       readDuration();
-      if (mode !== 'play') {
-        video.currentTime = clamp(heroVideo.frontTime, 0, Math.max(duration - 0.05, 0));
-      }
+      video.currentTime = clamp(heroVideo.frontTime, 0, Math.max(duration - 0.05, 0));
       gsap.to(video, { opacity: 1, duration: mode === 'still' ? 0.6 : 1.05, ease: 'power2.inOut' });
       cleanupReady();
     };
@@ -172,18 +170,50 @@ export function useCharacterScrub() {
     };
   }, [mode]);
 
-  // Mobile autoplay loop.
+  // Mobile scroll-scrub: character rotation driven by scroll, never autoplaying.
+  // Video stays paused; currentTime mapped from scroll progress with smoothing.
   useEffect(() => {
-    if (mode !== 'play') return;
+    if (mode !== 'scroll') return;
     const video = videoRef.current;
-    if (!video) return;
-    const tryPlay = () => video.play().catch(() => {});
-    tryPlay();
-    document.addEventListener('visibilitychange', tryPlay);
-    window.addEventListener('focus', tryPlay);
+    const scene = sceneRef.current;
+    if (!video || !scene) return;
+
+    let duration = 10;
+    const readDuration = () => {
+      if (Number.isFinite(video.duration) && video.duration > 0)
+        duration = video.duration;
+    };
+
+    // Park at front before any data loads (instant).
+    video.currentTime = heroVideo.frontTime;
+
+    video.addEventListener('loadedmetadata', readDuration);
+    video.addEventListener('loadeddata', readDuration);
+
+    // ONE ScrollTrigger — scrub maps hero scroll progress into currentTime.
+    const st = ScrollTrigger.create({
+      trigger: scene,
+      start: 'top top',
+      end: 'bottom top',
+      scrub: 0.6,
+      onUpdate(self) {
+        if (video.readyState < 2) return;
+        readDuration();
+        const target = clamp(
+          heroVideo.frontTime + (self.progress - 0.5) * heroVideo.scrubRange * 2,
+          0,
+          Math.max(duration - 0.05, 0)
+        );
+        if (Math.abs(video.currentTime - target) > 0.02) {
+          video.currentTime = target;
+        }
+      },
+    });
+
     return () => {
-      document.removeEventListener('visibilitychange', tryPlay);
-      window.removeEventListener('focus', tryPlay);
+      video.removeEventListener('loadedmetadata', readDuration);
+      video.removeEventListener('loadeddata', readDuration);
+      st.kill();
     };
   }, [mode]);
 

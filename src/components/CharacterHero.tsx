@@ -63,7 +63,6 @@ export default function CharacterHero() {
           muted
           loop
           playsInline
-          autoPlay={mode === 'play'}
           preload="metadata"
           disablePictureInPicture
           aria-hidden

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { gsap, ScrollTrigger } from '../lib/gsap';
 import { about } from '../data/portfolio';
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -31,24 +32,52 @@ function RevealLine({ text, i }: { text: string; i: number }) {
 
 function CountUp({ target, total }: { target: number; total: number }) {
   const ref = useRef<HTMLSpanElement | null>(null);
-  const inView = useInView(ref, { once: true, margin: '-15%' });
-  const [n, setN] = useState(0);
 
   useEffect(() => {
-    if (!inView) return;
-    let raf = 0;
-    const start = performance.now();
-    const tick = (t: number) => {
-      const p = Math.min((t - start) / 1200, 1);
-      setN(Math.round(target * (1 - Math.pow(1 - p, 3))));
-      if (p < 1) raf = requestAnimationFrame(tick);
+    const el = ref.current;
+    if (!el) return;
+    const pad = (n: number) => `${n}`.padStart(String(total).length, '0');
+
+    // Reduced motion: park immediately at final value, no animation.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = pad(target);
+      return;
+    }
+
+    // Deterministic initial value (always starts at 00).
+    el.textContent = pad(0);
+
+    const state = { v: 0 };
+    const tween = gsap.to(state, {
+      v: target,
+      duration: 1.2,
+      ease: 'power3.out',
+      paused: true,
+      onUpdate() {
+        el.textContent = pad(Math.round(state.v));
+      },
+      onComplete() {
+        el.textContent = pad(target);
+      },
+    });
+
+    // One ScrollTrigger — fires the tween when counter enters viewport.
+    const st = ScrollTrigger.create({
+      trigger: el,
+      start: 'top 90%',
+      once: true,
+      onEnter() {
+        tween.play();
+      },
+    });
+
+    return () => {
+      st.kill();
+      tween.kill();
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [inView, target]);
+  }, [target, total]);
 
-  const padded = `${n}`.padStart(String(total).length, '0');
-
+  const padded = `0`.padStart(String(total).length, '0');
   return (
     <span ref={ref} className="tabular-nums">
       {padded}

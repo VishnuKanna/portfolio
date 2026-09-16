@@ -227,20 +227,22 @@ export default function Contact() {
               transition={{ duration: 0.8, ease, delay: 0.3 }}
               className="mt-10 space-y-3"
             >
-              {[
-                ['Email', contact.email],
-                ['LinkedIn', contact.linkedin],
-                ['GitHub', contact.github],
-              ].map(([label, href]) => (
+              {(
+                [
+                  ['Email', contact.email, false],
+                  ['LinkedIn', contact.linkedin, true],
+                  ['GitHub', contact.github, true],
+                ] as const
+              ).map(([label, href, external]) => (
                 <li key={label}>
                   <a
                     href={href}
+                    {...(external
+                      ? { target: '_blank', rel: 'noopener noreferrer' }
+                      : {})}
                     className="group inline-flex items-center gap-3 border-b border-line pb-0.5 text-sm text-cream-soft transition-colors hover:border-accent-bright hover:text-cream"
                   >
                     <span className="eyebrow w-16 text-muted">{label}</span>
-                    <span className="mono text-xs tracking-[0.1em] opacity-70 transition-opacity group-hover:opacity-100">
-                      {href.replace('mailto:', '')}
-                    </span>
                     <span className="text-accent-bright transition-transform duration-300 group-hover:translate-x-0.5">↗</span>
                   </a>
                 </li>
